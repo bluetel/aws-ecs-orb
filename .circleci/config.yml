@@ -4,9 +4,32 @@ orbs:
   orb-tools: circleci/orb-tools@12.2
   shellcheck: circleci/shellcheck@3.2
 
+# Define executors
+executors:
+  linux:
+    docker:
+      - image: cimg/base:current-22.04
+    resource_class: small
+
 filters: &filters
   tags:
     only: /.*/
+
+# Define jobs
+jobs:
+  create-orb:
+    executor: linux
+    steps:
+      - checkout
+      - run:
+          name: Install CircleCI CLI
+          command: |
+            curl -fLSs https://raw.githubusercontent.com/CircleCI-Public/circleci-cli/master/install.sh | sudo bash
+      - run:
+          name: Create Orb
+          command: |
+            echo "Creating the orb"
+            circleci orb create bluetel/aws-ecs
 
 workflows:
   lint-pack:
@@ -19,18 +42,12 @@ workflows:
           filters: *filters
       - shellcheck/check:
           filters: *filters
-      # Create the orb
-      # run a command
-      - run:
-          name: Create Orb
-          command: |
-            echo "Creating the orb"
-            circleci orb create bluetel/aws-ecs
+      - create-orb:
           filters: *filters
       - orb-tools/publish:
           orb_name: bluetel/aws-ecs
           vcs_type: << pipeline.project.type >>
           pub_type: dev
           context: orb-publisher
-          requires: [orb-tools/lint, orb-tools/review, orb-tools/pack, shellcheck/check, orb-tools/create-orb]
+          requires: [orb-tools/lint, orb-tools/review, orb-tools/pack, shellcheck/check, create-orb]
           filters: *filters
