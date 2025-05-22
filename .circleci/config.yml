@@ -1,11 +1,11 @@
 version: 2.1
-setup: true
+
 orbs:
   orb-tools: circleci/orb-tools@12.2
   shellcheck: circleci/shellcheck@3.2
 
 # Filter definitions
-filters: &dev_filters
+dev_filters: &dev_filters
   tags:
     ignore: /.*/
   branches:
@@ -22,14 +22,8 @@ common_requires: &common_requires
   [orb-tools/lint, orb-tools/review, orb-tools/pack, shellcheck/check]
 
 workflows:
-  # Dev/Staging workflow
+  # Dev/Staging workflow - runs on push to staging branch
   lint-pack-dev:
-    triggers:
-      - schedule:
-          cron: "0 0 * * *"  # Run at midnight UTC every day
-          filters:
-            branches:
-              only: staging
     jobs:
       - orb-tools/lint:
           filters: *dev_filters
@@ -46,6 +40,26 @@ workflows:
           context: orb-publisher
           requires: *common_requires
           filters: *dev_filters
+  
+  # Weekly scheduled workflow -  we use this as builds expire after 90 days
+  weekly-dev-build:
+    triggers:
+      - schedule:
+          cron: "0 0 * * 0" # Every Sunday at midnight
+          filters:
+            branches:
+              only: staging
+    jobs:
+      - orb-tools/lint
+      - orb-tools/pack
+      - orb-tools/review
+      - shellcheck/check
+      - orb-tools/publish:
+          orb_name: bluetel/aws-ecs
+          vcs_type: << pipeline.project.type >>
+          pub_type: dev
+          context: orb-publisher
+          requires: *common_requires
 
   # Production workflow - tag based
   publish-prod:
@@ -61,7 +75,7 @@ workflows:
       - orb-tools/publish:
           orb_name: bluetel/aws-ecs
           vcs_type: << pipeline.project.type >>
-          pub_type: production
+          pub_type: prod
           context: orb-publisher
           requires: *common_requires
           filters: *prod_filters
