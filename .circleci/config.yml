@@ -11,6 +11,12 @@ dev_filters: &dev_filters
   branches:
     only: staging
 
+feature_filters: &feature_filters
+  tags:
+    ignore: /.*/
+  branches:
+    only: /^feature\/.*/
+
 prod_filters: &prod_filters
   tags:
     only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
@@ -40,6 +46,18 @@ workflows:
           context: orb-publisher
           requires: *common_requires
           filters: *dev_filters
+  
+  # Feature branch workflow - runs on push to any feature/* branch
+  feature-branch-checks:
+    jobs:
+      - orb-tools/lint:
+          filters: *feature_filters
+      - orb-tools/pack:
+          filters: *feature_filters
+      - orb-tools/review:
+          filters: *feature_filters
+      - shellcheck/check:
+          filters: *feature_filters
   
   # Weekly scheduled workflow -  we use this as builds expire after 90 days
   weekly-dev-build:
