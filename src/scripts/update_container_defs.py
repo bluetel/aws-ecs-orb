@@ -62,6 +62,8 @@ def get_latest_secret_version(secret_arn: str) -> str:
     # Construct and return the ARN for the latest version with proper formatting
     # Godsend for formatting the ARN:
     # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/secrets-envvar-secrets-manager.html
+    # TLDR:
+    # arn:aws:secretsmanager:region:aws_account_id:secret:secret-name:json-key:version-stage:version-id
     if json_key:
         latest_version_arn = f"{base_secret_arn}:{json_key}::{latest_version_id}"
     else:
