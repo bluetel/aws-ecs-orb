@@ -5,8 +5,6 @@ orbs:
   shellcheck: circleci/shellcheck@3.2
 
 filters: &filters
-  branches:
-    only: main
   tags:
     only: /.*/
 
@@ -21,10 +19,18 @@ workflows:
           filters: *filters
       - shellcheck/check:
           filters: *filters
+      # Create the orb
+      # run a command
+      - run:
+          name: Create Orb
+          command: |
+            echo "Creating the orb"
+            circleci orb create bluetel/aws-ecs
+          filters: *filters
       - orb-tools/publish:
           orb_name: bluetel/aws-ecs
           vcs_type: << pipeline.project.type >>
           pub_type: dev
           context: orb-publisher
-          requires: [orb-tools/lint, orb-tools/review, orb-tools/pack, shellcheck/check]
+          requires: [orb-tools/lint, orb-tools/review, orb-tools/pack, shellcheck/check, orb-tools/create-orb]
           filters: *filters
