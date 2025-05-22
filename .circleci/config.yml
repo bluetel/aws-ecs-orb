@@ -4,50 +4,64 @@ orbs:
   orb-tools: circleci/orb-tools@12.2
   shellcheck: circleci/shellcheck@3.2
 
-# Define executors
-executors:
-  linux:
-    docker:
-      - image: cimg/base:current-22.04
-    resource_class: small
-
-filters: &filters
+# Filter definitions
+filters: &dev_filters
   tags:
-    only: /.*/
+    ignore: /.*/
+  branches:
+    only: staging
 
-# Define jobs
-jobs:
-  create-orb:
-    executor: linux
-    steps:
-      - checkout
-      - run:
-          name: Install CircleCI CLI
-          command: |
-            curl -fLSs https://raw.githubusercontent.com/CircleCI-Public/circleci-cli/master/install.sh | sudo bash
-      - run:
-          name: Create Orb
-          command: |
-            echo "Creating the orb"
-            circleci orb create bluetel/aws-ecs --token ${CIRCLE_TOKEN} --no-prompt
+prod_filters: &prod_filters
+  tags:
+    only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
+  branches:
+    ignore: /.*/  # Don't trigger on any branch, only on tags
+
+# Common job requirements
+common_requires: &common_requires
+  [orb-tools/lint, orb-tools/review, orb-tools/pack, shellcheck/check]
 
 workflows:
-  lint-pack:
+  # Dev/Staging workflow
+  lint-pack-dev:
+    triggers:
+      - schedule:
+          cron: "0 0 * * *"  # Run at midnight UTC every day
+          filters:
+            branches:
+              only: staging
     jobs:
       - orb-tools/lint:
-          filters: *filters
+          filters: *dev_filters
       - orb-tools/pack:
-          filters: *filters
+          filters: *dev_filters
       - orb-tools/review:
-          filters: *filters
+          filters: *dev_filters
       - shellcheck/check:
-          filters: *filters
-      - create-orb:
-          filters: *filters
+          filters: *dev_filters
       - orb-tools/publish:
           orb_name: bluetel/aws-ecs
           vcs_type: << pipeline.project.type >>
           pub_type: dev
           context: orb-publisher
-          requires: [orb-tools/lint, orb-tools/review, orb-tools/pack, shellcheck/check, create-orb]
-          filters: *filters
+          requires: *common_requires
+          filters: *dev_filters
+
+  # Production workflow - tag based
+  publish-prod:
+    jobs:
+      - orb-tools/lint:
+          filters: *prod_filters
+      - orb-tools/pack:
+          filters: *prod_filters
+      - orb-tools/review:
+          filters: *prod_filters
+      - shellcheck/check:
+          filters: *prod_filters
+      - orb-tools/publish:
+          orb_name: bluetel/aws-ecs
+          vcs_type: << pipeline.project.type >>
+          pub_type: prod
+          context: orb-publisher
+          requires: *common_requires
+          filters: *prod_filters
