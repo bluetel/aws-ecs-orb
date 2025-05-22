@@ -254,12 +254,11 @@ def run(previous_task_definition, container_image_name_updates,
         raise value_error
     except:
         raise Exception('Image name update parameter could not be processed; please check parameter value: ' + container_image_name_updates)
-    return json.dumps(container_definitions)
-
-    bluetel_fix_secret_versions = unwrap_bluetel_fix_secret_versions(bluetel_fix_secret_versions)
 
     # Loop through the container definitions and see if there are any env var matches that are in the
     # bluetel_fix_secret_versions list.
+
+    bluetel_fix_secret_versions = unwrap_bluetel_fix_secret_versions(bluetel_fix_secret_versions)
 
     try:
         for container_definition in container_definitions:
@@ -273,6 +272,8 @@ def run(previous_task_definition, container_image_name_updates,
                         secret['valueFrom'] = get_latest_secret_version(secret['valueFrom'])
     except Exception as e:
         raise Exception(f"Error updating Bluetel secret versions: {e}")
+
+    return json.dumps(container_definitions)
 
 
 if __name__ == '__main__':
