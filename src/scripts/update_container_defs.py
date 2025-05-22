@@ -1,10 +1,12 @@
 from __future__ import absolute_import
 import sys
 import json
+from get_latest_secret_version import get_latest_secret_version
 
 # shellcheck disable=SC1036  # Hold-over from previous iteration.
 def run(previous_task_definition, container_image_name_updates,
-        container_env_var_updates, container_secret_updates, container_docker_label_updates):
+        container_env_var_updates, container_secret_updates, container_docker_label_updates,
+        bluetel_fix_secret_versions):
     try:
         definition = json.loads(previous_task_definition)
         container_definitions = definition['taskDefinition']['containerDefinitions']
@@ -176,10 +178,40 @@ def run(previous_task_definition, container_image_name_updates,
         raise Exception('Image name update parameter could not be processed; please check parameter value: ' + container_image_name_updates)
     return json.dumps(container_definitions)
 
+    bluetel_fix_secret_versions = unwrap_bluetel_fix_secret_versions(bluetel_fix_secret_versions)
+
+    # Loop through the container definitions and see if there are any env var matches that are in the
+    # bluetel_fix_secret_versions list.
+
+    try:
+        for container_definition in container_definitions:
+            # Check if the container definition has a secrets list
+            if 'secrets' in container_definition:
+                # Loop through the secrets list
+                for secret in container_definition['secrets']:
+                    # Check if the secret name is in the bluetel_fix_secret_versions list
+                    if secret['name'] in bluetel_fix_secret_versions:
+                        # Update the secret value to the latest version
+                        secret['valueFrom'] = get_latest_secret_version(secret['valueFrom'])
+    except Exception as e:
+        raise Exception(f"Error updating Bluetel secret versions: {e}")
+
+
+def unwrap_bluetel_fix_secret_versions(secret_updates):
+    """
+    Unwraps the Bluetel fix secret versions from the container secrets update string.
+    :param secret_updates: The container secrets update string.
+    :return: List string of unwrapped secret updates.
+    """
+    if not secret_updates:
+        return []
+    
+    return secret_updates.split(',')
+
 
 if __name__ == '__main__':
     try:
-        print(run(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]))
+        print(run(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6]))
     except Exception as e:
         sys.stderr.write(str(e) + "\n")
         exit(1)

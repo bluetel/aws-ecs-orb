@@ -2,9 +2,45 @@
 
 This is a Bluetel fork of the original CircleCI AWS ECS Orb.
 
+<b>Important: This repo and the orbs are stored publicly. Do not commit ant secrets or sensitive information to this repo!</b>
+
+## Installation
+
+In development, we use `pipenv` to manage our Python dependencies. To install `pipenv`, run the following commands:
+
+1. `brew install pipenv` # Install pipenv
+2. `pipenv --python <your python3 path>` # Point to the correct python version
+3. `pipenv install` # Install python dependencies
+
 ## Why?
 
-We needed to lock secret versions inside of task definitions.
+This fork supports the auto-retrieval of the latest Secret version from AWS Secrets Manager. The secret version is then tied inside the task definition.
+
+This way, secret changes cannot be made without a new deployment. This is important for security and audit purposes.
+
+## Example 
+
+```yaml
+- aws-ecs/update_service:
+    # ECS Configuration
+    cluster: $ECS_CLUSTER_ARN
+    service_name: $ECS_SERVICE_NAME
+    family: $ECS_FAMILY_NAME
+
+    # CodeDeploy Configuration
+    deployment_controller: CODE_DEPLOY
+    codedeploy_application_name: $ECS_DEPLOYMENT_APP_NAME
+    codedeploy_deployment_group_name: $ECS_DEPLOYMENT_GROUP_NAME
+    codedeploy_load_balanced_container_port: 8080
+    codedeploy_load_balanced_container_name: NaFrontendNginx
+
+    # Updates
+    container_image_name_updates: >
+      container=NaNextJs,tag=${CIRCLE_SHA1}-nextjs,
+      container=NaApollo,tag=${CIRCLE_SHA1}-apollo
+    
+    bluetel_fix_secret_versions: RUNTIME_ENV,SECOND_ENV # The name of the secrets to tie to the latest version.
+```
 
 ## Original Readme
 
