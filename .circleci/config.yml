@@ -75,7 +75,7 @@ workflows:
       - orb-tools/publish:
           orb_name: bluetel/aws-ecs
           vcs_type: << pipeline.project.type >>
-          pub_type: prod
+          pub_type: production
           context: orb-publisher
           requires: *common_requires
           filters: *prod_filters
