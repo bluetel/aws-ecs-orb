@@ -31,7 +31,7 @@ This way, secret changes cannot be made without a new deployment. This is import
     deployment_controller: CODE_DEPLOY
     codedeploy_application_name: $ECS_DEPLOYMENT_APP_NAME
     codedeploy_deployment_group_name: $ECS_DEPLOYMENT_GROUP_NAME
-    codedeploy_load_balanced_container_port: 8080
+    codedeploy_load_balanced_container_port: '8080'
     codedeploy_load_balanced_container_name: NaFrontendNginx
 
     # Updates
