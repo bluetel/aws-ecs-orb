@@ -29,7 +29,7 @@ common_requires: &common_requires
 
 workflows:
   # Dev/Staging workflow - runs on push to staging branch
-  lint-pack-dev:
+  publish-staging:
     jobs:
       - orb-tools/lint:
           filters: *dev_filters
@@ -80,7 +80,7 @@ workflows:
           requires: *common_requires
 
   # Production workflow - tag based
-  publish-prod:
+  publish-production:
     jobs:
       - orb-tools/lint:
           filters: *prod_filters
