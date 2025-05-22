@@ -60,11 +60,12 @@ def get_latest_secret_version(secret_arn: str) -> str:
         raise ValueError(f"Could not find current version for secret: {base_secret_arn}")
     
     # Construct and return the ARN for the latest version with proper formatting
+    # Godsend for formatting the ARN:
+    # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/secrets-envvar-secrets-manager.html
     if json_key:
-        # Include empty version-stage slot (::) before version ID when using JSON key
         latest_version_arn = f"{base_secret_arn}:{json_key}::{latest_version_id}"
     else:
-        latest_version_arn = f"{base_secret_arn}:{latest_version_id}"
+        latest_version_arn = f"{base_secret_arn}:::{latest_version_id}"
     
     return latest_version_arn
 
