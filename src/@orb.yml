@@ -3,6 +3,7 @@ version: 2.1
 description: >
   Manage and deploy apps via Amazon's AWS Elastic Container Service (ECS) on CircleCI.
   Supports the EC2 and Fargate launch types and Blue/Green deployment via CodeDeploy.
+  Also supports locking secrets to specific versions in the task definition.
 display:
-  home_url: "https://aws.amazon.com/ecs/"
-  source_url: "https://github.com/CircleCI-Public/aws-ecs-orb"
+  home_url: "https://github.com/bluetel/aws-ecs-orb"
+  source_url: "https://github.com/bluetel/aws-ecs-orb"
