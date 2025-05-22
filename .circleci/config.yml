@@ -29,7 +29,7 @@ jobs:
           name: Create Orb
           command: |
             echo "Creating the orb"
-            circleci orb create bluetel/aws-ecs
+            circleci orb create bluetel/aws-ecs --token ${CIRCLE_TOKEN}
 
 workflows:
   lint-pack:
