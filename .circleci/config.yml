@@ -1,34 +1,99 @@
 version: 2.1
-setup: true
+
 orbs:
   orb-tools: circleci/orb-tools@12.2
   shellcheck: circleci/shellcheck@3.2
 
-filters: &filters
+# Filter definitions
+dev_filters: &dev_filters
   tags:
-    only: /.*/
+    ignore: /.*/
+  branches:
+    only: staging
+
+feature_filters: &feature_filters
+  tags:
+    ignore: /.*/
+  branches:
+    only: /^feature\/.*/
+
+prod_filters: &prod_filters
+  tags:
+    only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
+  branches:
+    ignore: /.*/  # Don't trigger on any branch, only on tags
+
+# Common job requirements
+common_requires: &common_requires
+  [orb-tools/lint, orb-tools/review, orb-tools/pack, shellcheck/check]
 
 workflows:
-  lint-pack:
+  # Dev/Staging workflow - runs on push to staging branch
+  publish-staging:
     jobs:
       - orb-tools/lint:
-          filters: *filters
+          filters: *dev_filters
       - orb-tools/pack:
-          filters: *filters
+          filters: *dev_filters
       - orb-tools/review:
-          filters: *filters
+          filters: *dev_filters
       - shellcheck/check:
-          filters: *filters
+          filters: *dev_filters
       - orb-tools/publish:
-          orb_name: circleci/aws-ecs
+          orb_name: bluetel/aws-ecs
           vcs_type: << pipeline.project.type >>
           pub_type: dev
           context: orb-publisher
-          requires: [orb-tools/lint, orb-tools/review, orb-tools/pack, shellcheck/check]
-          filters: *filters
-      - orb-tools/continue:
-          orb_name: aws-ecs
-          pipeline_number: << pipeline.number >>
+          requires: *common_requires
+          filters: *dev_filters
+  
+  # Feature branch workflow - runs on push to any feature/* branch
+  feature-branch-checks:
+    jobs:
+      - orb-tools/lint:
+          filters: *feature_filters
+      - orb-tools/pack:
+          filters: *feature_filters
+      - orb-tools/review:
+          filters: *feature_filters
+      - shellcheck/check:
+          filters: *feature_filters
+  
+  # Weekly scheduled workflow -  we use this as builds expire after 90 days
+  weekly-dev-build:
+    triggers:
+      - schedule:
+          cron: "0 0 * * 0" # Every Sunday at midnight
+          filters:
+            branches:
+              only: staging
+    jobs:
+      - orb-tools/lint
+      - orb-tools/pack
+      - orb-tools/review
+      - shellcheck/check
+      - orb-tools/publish:
+          orb_name: bluetel/aws-ecs
           vcs_type: << pipeline.project.type >>
-          requires: [orb-tools/lint, orb-tools/review, orb-tools/pack, shellcheck/check]
-          filters: *filters
+          pub_type: dev
+          context: orb-publisher
+          requires: *common_requires
+
+  # Production workflow - tag based
+  publish-production:
+    jobs:
+      - orb-tools/lint:
+          filters: *prod_filters
+      - orb-tools/pack:
+          filters: *prod_filters
+      - orb-tools/review:
+          filters: *prod_filters
+      - shellcheck/check:
+          filters: *prod_filters
+      - orb-tools/publish:
+          orb_name: bluetel/aws-ecs
+          vcs_type: << pipeline.project.type >>
+          pub_type: production
+          context: orb-publisher
+          requires: *common_requires
+          filters: *prod_filters

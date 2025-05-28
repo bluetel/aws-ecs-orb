@@ -68,6 +68,16 @@ parameters:
     description: AWS region to use. Defaults to AWS_DEFAULT_REGION environment variable.
     type: string
     default: $AWS_DEFAULT_REGION
+  auto_versioned_secrets:
+    description: |
+      A comma-separated list of secret environment variables that should be automatically updated to their latest versions in AWS Secrets Manager.
+
+      Expected format: ENV_VAR_1,ENV_VAR_2,ENV_VAR_3
+
+      Only secrets specified in this list will have their versions automatically updated. If a listed environment variable is not a secret,
+      it will be ignored. Each listed secret will be updated to reference the latest version in AWS Secrets Manager.
+    default: ""
+    type: string
 steps:
   - run:
       name: Retrieve previous task definition and prepare new task definition values
@@ -83,6 +93,7 @@ steps:
         ORB_AWS_REGION: << parameters.region >>
         ORB_STR_CONTAINER_SECRET_UPDATES: <<parameters.container_secret_updates>>
         ORB_STR_CONTAINER_DOCKER_LABEL_UPDATES: << parameters.container_docker_label_updates >>
+        ORB_STR_AUTO_VERSIONED_SECRETS: << parameters.auto_versioned_secrets >>
   - run:
       name: Register new task definition
       command: <<include(scripts/register_new_task_def.sh)>>
