@@ -68,7 +68,7 @@ parameters:
     description: AWS region to use. Defaults to AWS_DEFAULT_REGION environment variable.
     type: string
     default: $AWS_DEFAULT_REGION
-  bluetel_fix_secret_versions:
+  auto_versioned_secrets:
     description: |
       Whether to fix the secret versions in the task definitions.
 
@@ -94,7 +94,7 @@ steps:
         ORB_AWS_REGION: << parameters.region >>
         ORB_STR_CONTAINER_SECRET_UPDATES: <<parameters.container_secret_updates>>
         ORB_STR_CONTAINER_DOCKER_LABEL_UPDATES: << parameters.container_docker_label_updates >>
-        ORB_STR_BLUETEL_FIX_SECRET_VERSIONS: << parameters.bluetel_fix_secret_versions >>
+        ORB_STR_AUTO_VERSIONED_SECRETS: << parameters.auto_versioned_secrets >>
   - run:
       name: Register new task definition
       command: <<include(scripts/register_new_task_def.sh)>>

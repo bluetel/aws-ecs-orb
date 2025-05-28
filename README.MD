@@ -39,7 +39,7 @@ This way, secret changes cannot be made without a new deployment. This is import
       container=NaNextJs,tag=${CIRCLE_SHA1}-nextjs,
       container=NaApollo,tag=${CIRCLE_SHA1}-apollo
     
-    bluetel_fix_secret_versions: RUNTIME_ENV,SECOND_ENV # The name of the secrets to tie to the latest version.
+    auto_versioned_secrets: RUNTIME_ENV,SECOND_ENV # The name of the secrets to tie to the latest version.
 ```
 
 ## Original Readme

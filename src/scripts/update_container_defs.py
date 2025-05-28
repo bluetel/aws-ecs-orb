@@ -72,7 +72,7 @@ def get_latest_secret_version(secret_arn: str) -> str:
     return latest_version_arn
 
 
-def unwrap_bluetel_fix_secret_versions(secret_updates):
+def unwrap_auto_versioned_secrets(secret_updates):
     """
     Unwraps the Bluetel fix secret versions from the container secrets update string.
     :param secret_updates: The container secrets update string.
@@ -87,7 +87,7 @@ def unwrap_bluetel_fix_secret_versions(secret_updates):
 # shellcheck disable=SC1036  # Hold-over from previous iteration.
 def run(previous_task_definition, container_image_name_updates,
         container_env_var_updates, container_secret_updates, container_docker_label_updates,
-        bluetel_fix_secret_versions):
+        auto_versioned_secrets):
     try:
         definition = json.loads(previous_task_definition)
         container_definitions = definition['taskDefinition']['containerDefinitions']
@@ -259,9 +259,9 @@ def run(previous_task_definition, container_image_name_updates,
         raise Exception('Image name update parameter could not be processed; please check parameter value: ' + container_image_name_updates)
 
     # Loop through the container definitions and see if there are any env var matches that are in the
-    # bluetel_fix_secret_versions list.
+    # auto_versioned_secrets list.
 
-    bluetel_fix_secret_versions = unwrap_bluetel_fix_secret_versions(bluetel_fix_secret_versions)
+    auto_versioned_secrets = unwrap_auto_versioned_secrets(auto_versioned_secrets)
 
     try:
         for container_definition in container_definitions:
@@ -269,8 +269,8 @@ def run(previous_task_definition, container_image_name_updates,
             if 'secrets' in container_definition:
                 # Loop through the secrets list
                 for secret in container_definition['secrets']:
-                    # Check if the secret name is in the bluetel_fix_secret_versions list
-                    if secret['name'] in bluetel_fix_secret_versions:
+                    # Check if the secret name is in the auto_versioned_secrets list
+                    if secret['name'] in auto_versioned_secrets:
                         # Update the secret value to the latest version
                         secret['valueFrom'] = get_latest_secret_version(secret['valueFrom'])
     except Exception as e:

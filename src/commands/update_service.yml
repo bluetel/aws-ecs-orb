@@ -248,7 +248,7 @@ parameters:
       Default to empty.
     default: ""
     type: string
-  bluetel_fix_secret_versions:
+  auto_versioned_secrets:
     description: |
       Whether to fix the secret versions in the task definitions.
 
@@ -272,7 +272,7 @@ steps:
             container_docker_label_updates: << parameters.container_docker_label_updates >>
             profile_name: << parameters.profile_name >>
             region: << parameters.region >>
-            bluetel_fix_secret_versions: << parameters.bluetel_fix_secret_versions >>
+            auto_versioned_secrets: << parameters.auto_versioned_secrets >>
   - when:
       condition: << parameters.skip_task_definition_registration >>
       steps:
