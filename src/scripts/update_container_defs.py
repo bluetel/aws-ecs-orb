@@ -274,7 +274,7 @@ def run(previous_task_definition, container_image_name_updates,
                         # Update the secret value to the latest version
                         secret['valueFrom'] = get_latest_secret_version(secret['valueFrom'])
     except Exception as e:
-        raise Exception(f"Error updating Bluetel secret versions: {e}")
+        raise Exception(f"Error updating secret versions: {e}")
 
     return json.dumps(container_definitions)
 
