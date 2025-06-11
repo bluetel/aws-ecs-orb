@@ -1,10 +1,93 @@
 from __future__ import absolute_import
 import sys
 import json
+import boto3
+import re
+import uuid
+
+
+def get_latest_secret_version(secret_arn: str) -> str:
+    """
+    Get the latest version of a secret from AWS Secrets Manager. This does not
+    return the latest tagged version, but the latest version of the secret.
+
+    Args:
+        secret_arn (str): The ARN of the secret to retrieve.
+
+    Returns:
+        str: The arn of the latest version of the secret.
+    """
+    
+    # Pattern to detect UUID-like segments that could be version IDs
+    uuid_pattern = r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+    
+    # Base pattern to extract the main secret ARN
+    base_pattern = r'^(arn:aws:secretsmanager:[^:]+:[^:]+:secret:[^:]+)'
+    
+    # Extract the base ARN without any additional segments
+    match = re.match(base_pattern, secret_arn)
+    if not match:
+        raise ValueError(f"Invalid secret ARN format: {secret_arn}")
+    
+    base_secret_arn = match.group(1)
+    
+    # Check if there's a JSON key in the ARN (not a UUID)
+    remaining = secret_arn[len(base_secret_arn):].lstrip(':')
+    segments = remaining.split(':')
+    
+    json_key = None
+    if segments and segments[0] and not re.match(uuid_pattern, segments[0]):
+        json_key = segments[0]
+    
+    # Create a Secrets Manager client
+    session = boto3.session.Session()
+    region = session.region_name or "ap-northeast-1"
+    client = boto3.client('secretsmanager', region_name=region)
+
+    # Get information about the versions of the secret
+    response = client.list_secret_version_ids(
+        SecretId=base_secret_arn
+    )
+    
+    # Find the current version ID
+    latest_version_id = None
+    for version in response['Versions']:
+        if version.get('VersionStages') and 'AWSCURRENT' in version['VersionStages']:
+            latest_version_id = version['VersionId']
+            break
+
+    if not latest_version_id:
+        raise ValueError(f"Could not find current version for secret: {base_secret_arn}")
+    
+    # Construct and return the ARN for the latest version with proper formatting
+    # Godsend for formatting the ARN:
+    # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/secrets-envvar-secrets-manager.html
+    # TLDR:
+    # arn:aws:secretsmanager:region:aws_account_id:secret:secret-name:json-key:version-stage:version-id
+    if json_key:
+        latest_version_arn = f"{base_secret_arn}:{json_key}::{latest_version_id}"
+    else:
+        latest_version_arn = f"{base_secret_arn}:::{latest_version_id}"
+    
+    return latest_version_arn
+
+
+def unwrap_auto_versioned_secrets(secret_updates):
+    """
+    Unwraps the Bluetel fix secret versions from the container secrets update string.
+    :param secret_updates: The container secrets update string.
+    :return: List string of unwrapped secret updates.
+    """
+    if not secret_updates:
+        return []
+    
+    return secret_updates.split(',')
+
 
 # shellcheck disable=SC1036  # Hold-over from previous iteration.
 def run(previous_task_definition, container_image_name_updates,
-        container_env_var_updates, container_secret_updates, container_docker_label_updates):
+        container_env_var_updates, container_secret_updates, container_docker_label_updates,
+        auto_versioned_secrets):
     try:
         definition = json.loads(previous_task_definition)
         container_definitions = definition['taskDefinition']['containerDefinitions']
@@ -174,12 +257,31 @@ def run(previous_task_definition, container_image_name_updates,
         raise value_error
     except:
         raise Exception('Image name update parameter could not be processed; please check parameter value: ' + container_image_name_updates)
+
+    # Loop through the container definitions and see if there are any env var matches that are in the
+    # auto_versioned_secrets list.
+
+    auto_versioned_secrets = unwrap_auto_versioned_secrets(auto_versioned_secrets)
+
+    try:
+        for container_definition in container_definitions:
+            # Check if the container definition has a secrets list
+            if 'secrets' in container_definition:
+                # Loop through the secrets list
+                for secret in container_definition['secrets']:
+                    # Check if the secret name is in the auto_versioned_secrets list
+                    if secret['name'] in auto_versioned_secrets:
+                        # Update the secret value to the latest version
+                        secret['valueFrom'] = get_latest_secret_version(secret['valueFrom'])
+    except Exception as e:
+        raise Exception(f"Error updating secret versions: {e}")
+
     return json.dumps(container_definitions)
 
 
 if __name__ == '__main__':
     try:
-        print(run(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]))
+        print(run(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6]))
     except Exception as e:
         sys.stderr.write(str(e) + "\n")
         exit(1)
